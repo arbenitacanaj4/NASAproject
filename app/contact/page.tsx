@@ -24,7 +24,7 @@ export default function ContactPage() {
                   <Mail className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold mb-2">Email</h3>
-                <p className="text-sm text-muted-foreground">contact@meteorgar.org</p>
+                <p className="text-sm text-muted-foreground">gkapanadze@edu.bme.hu</p>
               </CardContent>
             </Card>
 
@@ -34,7 +34,7 @@ export default function ContactPage() {
                   <Phone className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold mb-2">Phone</h3>
-                <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
+                <p className="text-sm text-muted-foreground">+36 20 5329691</p>
               </CardContent>
             </Card>
 
@@ -44,7 +44,7 @@ export default function ContactPage() {
                   <MapPin className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold mb-2">Location</h3>
-                <p className="text-sm text-muted-foreground">Research Center, USA</p>
+                <p className="text-sm text-muted-foreground">Sigma Technology, Hungary</p>
               </CardContent>
             </Card>
           </div>
