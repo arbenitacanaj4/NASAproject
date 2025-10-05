@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { SimulationData } from "./simulation-interface"
-import { AlertTriangle, Shield, AlertCircle } from "lucide-react"
+import { AlertTriangle, Shield, AlertCircle, Waves } from "lucide-react"
 
 interface SimulationResultsProps {
   data: SimulationData
@@ -118,12 +118,34 @@ export function SimulationResults({ data }: SimulationResultsProps) {
 
         <div className="border-t border-border/50 pt-4">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            Population Impact
+            {data.tsunamiWarning ? (
+              <Waves className="w-4 h-4 text-blue-500" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+            )}
+            {data.tsunamiWarning ? "Ocean Impact" : "Population Impact"}
           </h3>
-          <div className="pl-4">
-            <p className="text-xs text-muted-foreground mb-1">Estimated Affected Population</p>
-            <p className="text-2xl font-bold text-destructive">{data.affectedPopulation.toLocaleString()}</p>
+          <div className="pl-4 space-y-2">
+            <p className="text-xs text-muted-foreground mb-1">Impact Location</p>
+            <p className="text-lg font-semibold mb-3">{data.continent}</p>
+
+            {data.tsunamiWarning ? (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <p className="text-sm text-blue-400 font-medium">⚠️ Tsunami Warning</p>
+                <p className="text-xs text-blue-300/80 mt-1">
+                  Ocean impact detected. Tsunami likely, no direct land population affected. Coastal regions should be
+                  evacuated immediately.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground mb-1">Estimated Affected Population</p>
+                <p className="text-2xl font-bold text-destructive">{data.affectedPopulation.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Based on {data.continent} average population density
+                </p>
+              </>
+            )}
           </div>
         </div>
 

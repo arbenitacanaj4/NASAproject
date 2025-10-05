@@ -3,11 +3,13 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, AlertTriangle, Info } from "lucide-react"
 import { AsteroidSelector } from "./asteroid-selector"
 import { ImpactParameters } from "./impact-parameters"
 import { SimulationResults } from "./simulation-results"
 import { Earth3D } from "../earth/earth-3d"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 
 export interface AsteroidData {
   name: string
@@ -16,6 +18,13 @@ export interface AsteroidData {
   distance: number
   composition: string
   status: string
+  impactProbability: number
+  willImpact: boolean
+  isHypothetical: boolean
+  predictedLat: number
+  predictedLon: number
+  closeApproachDate: string
+  missDistanceKm: number
 }
 
 export interface SimulationData {
@@ -26,6 +35,8 @@ export interface SimulationData {
   thermalRadius: number
   seismicMagnitude: number
   affectedPopulation: number
+  continent: string
+  tsunamiWarning: boolean
 }
 
 export function SimulationInterface() {
@@ -36,32 +47,78 @@ export function SimulationInterface() {
   const [simulationData, setSimulationData] = useState<SimulationData | null>(null)
   const [showImpact, setShowImpact] = useState(false)
 
+  const getContinentAndDensity = (lat: number, lon: number): { continent: string; density: number } => {
+    const isInOcean =
+      ((lon < -100 || lon > 120) && lat > -60 && lat < 60) ||
+      (lon > -70 && lon < -10 && ((lat > 40 && lat < 70) || (lat > -60 && lat < 10))) ||
+      (lon > 40 && lon < 100 && lat > -50 && lat < 30 && !(lat > 0 && lat < 35 && lon > 60 && lon < 95)) ||
+      lat < -60 ||
+      lat > 70
+
+    if (isInOcean) {
+      return { continent: "Ocean", density: 0 }
+    }
+
+    if (lat > -35 && lat < 37 && lon > -20 && lon < 52) {
+      return { continent: "Africa", density: 45 }
+    }
+
+    if ((lat > 0 && lat < 75 && lon > 25 && lon < 180) || (lat > 10 && lat < 30 && lon > 70 && lon < 140)) {
+      return { continent: "Asia", density: 150 }
+    }
+
+    if (lat > 35 && lat < 72 && lon > -25 && lon < 60) {
+      return { continent: "Europe", density: 75 }
+    }
+
+    if (lat > 15 && lat < 75 && lon > -170 && lon < -50) {
+      return { continent: "North America", density: 35 }
+    }
+
+    if (lat > -56 && lat < 13 && lon > -82 && lon < -34) {
+      return { continent: "South America", density: 25 }
+    }
+
+    if (lat > -45 && lat < -10 && lon > 110 && lon < 155) {
+      return { continent: "Australia", density: 5 }
+    }
+
+    if (lat < -60) {
+      return { continent: "Antarctica", density: 0 }
+    }
+
+    return { continent: "Ocean", density: 0 }
+  }
+
   const handleRunSimulation = () => {
     if (!selectedAsteroid) return
 
-    // Physics-based calculations with angle consideration
-    const mass = (4 / 3) * Math.PI * Math.pow(selectedAsteroid.diameter / 2, 3) * 2500 // kg/m³ density
-    const velocity = selectedAsteroid.velocity * 1000 // convert km/s to m/s
+    const impactLat = selectedAsteroid.predictedLat
+    const impactLon = selectedAsteroid.predictedLon
 
-    // Angle affects effective impact velocity (vertical component)
+    setLatitude(impactLat)
+    setLongitude(impactLon)
+
+    const mass = (4 / 3) * Math.PI * Math.pow(selectedAsteroid.diameter / 2, 3) * 2500
+    const velocity = selectedAsteroid.velocity * 1000
+
     const angleRad = (impactAngle * Math.PI) / 180
     const effectiveVelocity = velocity * Math.sin(angleRad)
 
     const kineticEnergy = 0.5 * mass * Math.pow(effectiveVelocity, 2)
     const energyMegatons = kineticEnergy / 4.184e15
 
-    // Impact calculations with angle modifier
-    const angleModifier = Math.sin(angleRad) // Steeper angles create larger craters
+    const angleModifier = Math.sin(angleRad)
     const craterDiameter = Math.pow(energyMegatons, 0.3) * 1000 * angleModifier
     const craterDepth = craterDiameter * 0.3
     const blastRadius = Math.pow(energyMegatons, 0.33) * 10 * angleModifier
     const thermalRadius = Math.pow(energyMegatons, 0.41) * 8
     const seismicMagnitude = 0.67 * Math.log10(energyMegatons) + 3.87
 
-    // Population estimate (simplified)
+    const { continent, density } = getContinentAndDensity(impactLat, impactLon)
     const affectedArea = Math.PI * Math.pow(blastRadius, 2)
-    const avgPopDensity = 50 // people per km²
-    const affectedPopulation = Math.floor(affectedArea * avgPopDensity)
+    const affectedPopulation = Math.floor(affectedArea * density)
+    const tsunamiWarning = continent === "Ocean"
 
     setSimulationData({
       craterDiameter: Math.round(craterDiameter),
@@ -71,6 +128,8 @@ export function SimulationInterface() {
       thermalRadius: Math.round(thermalRadius),
       seismicMagnitude: Math.round(seismicMagnitude * 10) / 10,
       affectedPopulation,
+      continent,
+      tsunamiWarning,
     })
 
     setShowImpact(true)
@@ -119,9 +178,63 @@ export function SimulationInterface() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Panel */}
         <div className="space-y-6">
           <AsteroidSelector selectedAsteroid={selectedAsteroid} onSelectAsteroid={setSelectedAsteroid} />
+
+          {selectedAsteroid && (
+            <Alert
+              variant={selectedAsteroid.willImpact ? "destructive" : "default"}
+              className="bg-card/50 backdrop-blur-sm border-border/50"
+            >
+              {selectedAsteroid.willImpact ? (
+                <>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle className="flex items-center gap-2">
+                    Real Impact Predicted
+                    <Badge variant="destructive" className="text-xs">
+                      CRITICAL
+                    </Badge>
+                  </AlertTitle>
+                  <AlertDescription>
+                    <strong>NASA data confirms Earth collision.</strong> Miss distance:{" "}
+                    <strong>{selectedAsteroid.missDistanceKm.toLocaleString()} km</strong> (within Earth's radius).
+                    Impact probability: <strong>{selectedAsteroid.impactProbability}%</strong>
+                    <br />
+                    Predicted impact near:{" "}
+                    <strong>
+                      {selectedAsteroid.predictedLat.toFixed(2)}°, {selectedAsteroid.predictedLon.toFixed(2)}°
+                    </strong>
+                    <br />
+                    Close approach: {selectedAsteroid.closeApproachDate}
+                  </AlertDescription>
+                </>
+              ) : (
+                <>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle className="flex items-center gap-2">
+                    Hypothetical Simulation
+                    <Badge variant="outline" className="text-xs">
+                      NO REAL IMPACT
+                    </Badge>
+                  </AlertTitle>
+                  <AlertDescription>
+                    <strong>This asteroid will safely pass Earth</strong> at{" "}
+                    <strong>{selectedAsteroid.missDistanceKm.toLocaleString()} km</strong> (
+                    {selectedAsteroid.distance.toFixed(4)} AU).
+                    <br />
+                    The simulation below shows a <strong>hypothetical scenario</strong> based on the
+                    asteroid's approach trajectory if it were to impact Earth.
+                    <br />
+                    {selectedAsteroid.status === "Potentially Hazardous" && (
+                      <span className="text-yellow-500">
+                        ⚠️ Marked as Potentially Hazardous due to size and proximity, but no collision expected.
+                      </span>
+                    )}
+                  </AlertDescription>
+                </>
+              )}
+            </Alert>
+          )}
 
           <ImpactParameters
             impactAngle={impactAngle}
@@ -134,15 +247,42 @@ export function SimulationInterface() {
             disabled={!selectedAsteroid}
           />
 
-          {simulationData && <SimulationResults data={simulationData} />}
+          {simulationData && (
+            <>
+              {selectedAsteroid?.isHypothetical && (
+                <Card className="bg-blue-950/30 backdrop-blur-sm border-blue-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-blue-400 text-sm flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      Hypothetical Scenario
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-blue-300/80 leading-relaxed">
+                      The results below represent a theoretical impact scenario. In reality,{" "}
+                      <strong>{selectedAsteroid?.name}</strong> will pass Earth safely at a distance of{" "}
+                      <strong>{selectedAsteroid?.missDistanceKm.toLocaleString()} km</strong>. This simulation
+                      demonstrates what could happen if the asteroid's trajectory were altered to intersect with Earth.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              <SimulationResults data={simulationData} />
+            </>
+          )}
         </div>
 
-        {/* Right Panel - 3D Visualization */}
         <div className="lg:sticky lg:top-24 h-fit">
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
             <CardHeader>
               <CardTitle>3D Impact Visualization</CardTitle>
-              <CardDescription>Interactive Earth model showing impact location</CardDescription>
+              <CardDescription>
+                {selectedAsteroid?.willImpact
+                  ? "Real predicted impact location from NASA data"
+                  : selectedAsteroid?.isHypothetical
+                    ? "Hypothetical impact point based on approach trajectory"
+                    : "Interactive Earth model"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="aspect-square">
