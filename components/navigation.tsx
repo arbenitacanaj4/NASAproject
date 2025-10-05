@@ -2,16 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Rocket } from "lucide-react"
+import { Rocket, Menu, X } from "lucide-react"
+import { useState } from "react"
 
 export function Navigation() {
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const links = [
     { href: "/", label: "Home" },
     { href: "/simulation", label: "Simulation" },
-    { href: "/contact", label: "Contact" },
+    { href: "/team", label: "Team" },
   ]
 
   return (
@@ -25,6 +26,7 @@ export function Navigation() {
         </Link>
 
         <div className="flex items-center gap-8">
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
             {links.map((link) => (
               <Link
@@ -39,9 +41,43 @@ export function Navigation() {
             ))}
           </div>
 
-          
+          <button
+            className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Mobile Menu Panel */}
+          <div className="fixed top-16 right-0 bottom-0 w-64 bg-background border-l border-border/40 md:hidden">
+            <div className="flex flex-col gap-1 p-4">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-primary/10 hover:text-primary ${
+                    pathname === link.href ? "bg-primary/20 text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </nav>
   )
 }
